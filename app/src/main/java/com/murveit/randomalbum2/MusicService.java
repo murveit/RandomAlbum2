@@ -497,12 +497,28 @@ public class MusicService extends Service implements
         return builder.build();
     }
 
+    private void playRandomAlbum() {
+        if (allAlbums == null || allAlbums.isEmpty()) {
+            Log.e(TAG, "Cannot play random album, list is empty or not loaded yet.");
+            return;
+        }
+
+        // Get a random index and play the corresponding album
+        int randomIndex = random.nextInt(allAlbums.size());
+        Album randomAlbum = allAlbums.get(randomIndex);
+
+        Log.d(TAG, "Playing random album on first start: " + randomAlbum.title);
+
+        // Call your definitive play method. This is a new choice, so history should be managed.
+        playAlbum(randomAlbum, 0, true);
+    }
     private void loadLastPlaybackState() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         long lastAlbumId = prefs.getLong(PREF_LAST_ALBUM_ID, -1L);
 
         if (lastAlbumId == -1L) {
-            Log.d(TAG, "No saved playback state found.");
+            Log.d(TAG, "No saved playback state found. Starting a random album.");
+            playRandomAlbum();
             return;
         }
 

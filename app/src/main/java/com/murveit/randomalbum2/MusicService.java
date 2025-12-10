@@ -130,8 +130,16 @@ public class MusicService extends MediaBrowserServiceCompat implements
             @Override
             public void onPause() {
                 Log.d("MediaSessionCallback", "====== ON PAUSE RECEIVED ======");
-                // Your existing logic for pausing
-                pause();
+                // If the system tells us to pause, but we are already paused,
+                // treat it as a command to PLAY.
+                if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                    Log.d("MediaSessionCallback", "Was already paused, so interpreting ON PAUSE as PLAY.");
+                    play();
+                } else {
+                    // Otherwise, perform a normal pause.
+                    Log.d("MediaSessionCallback", "Was playing, performing a normal PAUSE.");
+                    pause();
+                }
             }
 
             @Override
@@ -643,56 +651,54 @@ public class MusicService extends MediaBrowserServiceCompat implements
         // Call your definitive play method. This is a new choice, so history should be managed.
         playAlbum(randomAlbum, 0, true);
     }
+
+    // In MusicService.java
+
     private void loadLastPlaybackState() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        long lastAlbumId = prefs.getLong(PREF_LAST_ALBUM_ID, -1L);
+        long lastAlbumId = prefs.getLong(PREF_LAST_ALBUM_ID, -1);
+        int lastSongIndex = prefs.getInt(PREF_LAST_SONG_INDEX, 0);
+        int lastPosition = prefs.getInt(PREF_LAST_POSITION, 0);
 
-        if (lastAlbumId == -1L) {
-            Log.d(TAG, "No saved playback state found. Starting a random album.");
-            playRandomAlbum();
-            return;
-        }
-
-        Album lastAlbum = null;
-        for (Album album : allAlbums) {
-            if (album.id == lastAlbumId) {
-                lastAlbum = album;
-                break;
-            }
-        }
-
-        if (lastAlbum != null) {
-            Log.d(TAG, "Found last played album: " + lastAlbum.title);
-            int lastSongIndex = prefs.getInt(PREF_LAST_SONG_INDEX, 0);
-            int lastPosition = prefs.getInt(PREF_LAST_POSITION, 0);
-
-            // Set the state but DON'T auto-play
-            currentAlbum = lastAlbum;
-            currentSongIndex = lastSongIndex;
-            currentAlbumData.postValue(currentAlbum);
-
-            if (currentSongIndex < currentAlbum.songs.size()) {
-                Song songToPrepare = currentAlbum.songs.get(currentSongIndex);
-                currentSongData.postValue(songToPrepare);
-                try {
-                    mediaPlayer.reset();
-                    mediaPlayer.setDataSource(getApplicationContext(), songToPrepare.contentUri);
-                    // Prepare the player and seek, but don't start it
-                    mediaPlayer.setOnPreparedListener(mp -> {
-                        mp.seekTo(lastPosition);
-                        playbackPositionData.postValue(lastPosition);
-                        Log.d(TAG, "Restored state to song: " + songToPrepare.title + ", Position: " + lastPosition);
-                        // Reset the listener to the main one
-                        mediaPlayer.setOnPreparedListener(this);
-                    });
-                    mediaPlayer.prepareAsync();
-                } catch (IOException e) {
-                    Log.e(TAG, "Error preparing restored song", e);
+        if (lastAlbumId != -1 && !allAlbums.isEmpty()) {
+            Album foundAlbum = null;
+            for (Album album : allAlbums) {
+                if (album.id == lastAlbumId) {
+                    foundAlbum = album;
+                    break;
                 }
             }
-            // Clear the saved state so it doesn't auto-load again next time
-            // unless the user pauses again.
-            prefs.edit().clear().apply();
+
+            if (foundAlbum != null) {
+                Log.d(TAG, "Restoring last playback state: Album '" + foundAlbum.title + "', Song index " + lastSongIndex);
+                currentAlbum = foundAlbum;
+                currentSongIndex = lastSongIndex;
+                currentAlbumData.postValue(currentAlbum);
+
+                if (currentSongIndex < currentAlbum.songs.size()) {
+                    Song songToPlay = currentAlbum.songs.get(currentSongIndex);
+                    currentSongData.postValue(songToPlay);
+                    try {
+                        mediaPlayer.reset();
+                        mediaPlayer.setDataSource(getApplicationContext(), songToPlay.contentUri);
+                        // Prepare the player but don't start it.
+                        mediaPlayer.prepare();
+                        // Seek to the last known position.
+                        mediaPlayer.seekTo(lastPosition);
+                        playbackPositionData.postValue(lastPosition);
+
+                        // 1. Update the metadata for the display (e.g., car screen)
+                        updateMediaSessionMetadata(songToPlay);
+
+                        // 2. Update the session state to PAUSED.
+                        //    This tells the system you are ready to receive a PLAY command.
+                        updateMediaSessionState();
+
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error loading last playback state", e);
+                    }
+                }
+            }
         }
     }
 

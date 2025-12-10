@@ -30,18 +30,32 @@ import androidx.lifecycle.MutableLiveData;
 import java.util.Timer;
 import java.util.TimerTask;
 import android.app.PendingIntent;
+
+import androidx.media.MediaBrowserServiceCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
 import android.telephony.TelephonyManager;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-public class MusicService extends Service implements
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
+import androidx.media.MediaBrowserServiceCompat;
+import java.util.List;
+import android.os.Bundle;
+import androidx.annotation.NonNull;
+import android.support.v4.media.MediaBrowserCompat;
+
+public class MusicService extends MediaBrowserServiceCompat implements
         MediaPlayer.OnPreparedListener,
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener {
 
     private static final String TAG = "MusicService";
     private final IBinder binder = new MusicBinder();
+
+    private MediaSessionCompat mediaSession;
+    private MediaMetadataCompat.Builder metadataBuilder = new MediaMetadataCompat.Builder();
 
     // Notification constants
     private static final int NOTIFICATION_ID = 1;
@@ -100,6 +114,49 @@ public class MusicService extends Service implements
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "MusicService onCreate");
+
+        // Create a MediaSessionCompat
+        mediaSession = new MediaSessionCompat(this, TAG);
+
+        // Set the session's callbacks
+        mediaSession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public void onPlay() {
+                Log.d("MediaSessionCallback", "====== ON PLAY RECEIVED ======");
+                // Your existing logic for playing
+                play();
+            }
+
+            @Override
+            public void onPause() {
+                Log.d("MediaSessionCallback", "====== ON PAUSE RECEIVED ======");
+                // Your existing logic for pausing
+                pause();
+            }
+
+            @Override
+            public void onSkipToNext() {
+                Log.d("MediaSessionCallback", "====== ON SKIP TO NEXT RECEIVED ======");
+                // Your existing logic for next song
+                nextSong();
+            }
+
+            @Override
+            public void onSkipToPrevious() {
+                Log.d("MediaSessionCallback", "====== ON SKIP TO PREVIOUS RECEIVED ======");
+                // Your existing logic for previous song
+                prevSong();
+            }
+            @Override
+            public void onStop() {
+                Log.d("MediaSessionCallback", "====== ON STOP RECEIVED ======");
+                // Your logic to stop playback completely
+                stopPlayback();
+            }
+        });
+        // Set the session's token so that client activities can communicate with it.
+        setSessionToken(mediaSession.getSessionToken());
+
         createNotificationChannel();
         initMediaPlayer();
         setupProgressTimer();
@@ -116,6 +173,45 @@ public class MusicService extends Service implements
             new android.os.Handler(getMainLooper()).post(this::loadLastPlaybackState);
         }).start();
     }
+
+    private void updateMediaSessionState() {
+        if (mediaPlayer == null || mediaSession == null) {
+            return;
+        }
+        int state = isPlayingData.getValue() != null && isPlayingData.getValue()
+                ? PlaybackStateCompat.STATE_PLAYING
+                : PlaybackStateCompat.STATE_PAUSED;
+
+        // Use a long for the actions bitmask
+        long actions = PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                PlaybackStateCompat.ACTION_PLAY |
+                PlaybackStateCompat.ACTION_PAUSE |
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                PlaybackStateCompat.ACTION_STOP;
+
+        mediaSession.setPlaybackState(new PlaybackStateCompat.Builder()
+                .setState(state, mediaPlayer.getCurrentPosition(), 1.0f)
+                .setActions(actions) // Use the actions bitmask
+                .build());
+    }
+
+    private void updateMediaSessionMetadata(Song song) {
+        if (song == null || mediaSession == null) {
+            return;
+        }
+
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist);
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentAlbum.title);
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title);
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, song.duration);
+
+        // If you have album art, you'd load it here and add it:
+        // metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, albumArtBitmap);
+
+        mediaSession.setMetadata(metadataBuilder.build());
+    }
+
     public boolean isPlaying() {
         return mediaPlayer != null && mediaPlayer.isPlaying();
     }
@@ -172,24 +268,45 @@ public class MusicService extends Service implements
         return START_STICKY;
     }
 
+    // Replace your single playPause() method with these three methods:
+
     public void playPause() {
-        if (mediaPlayer == null) return;
-        if (mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-            Log.d(TAG, "Playback paused");
-            isPlayingData.postValue(false);
-            savePlaybackState();
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            pause();
         } else {
-            if (currentAlbum == null) {
-                nextAlbum();
-            } else {
-                mediaPlayer.start();
-                Log.d(TAG, "Playback resumed");
-                isPlayingData.postValue(true);
-            }
+            play();
         }
-        updateNotification();
     }
+
+    public void play() {
+        if (mediaPlayer == null) return;
+
+        if (currentAlbum == null) {
+            nextAlbum();
+        } else {
+            mediaPlayer.start();
+            isPlayingData.postValue(true);
+            Log.d(TAG, "Playback started/resumed");
+            mediaSession.setActive(true); // **CRITICAL**: Take audio focus
+            startForeground(NOTIFICATION_ID, createNotification()); // Ensure service is foreground
+            updateNotification();
+            updateMediaSessionState();
+        }
+    }
+
+    public void pause() {
+        if (mediaPlayer == null || !mediaPlayer.isPlaying()) return;
+
+        mediaPlayer.pause();
+        isPlayingData.postValue(false);
+        Log.d(TAG, "Playback paused");
+        savePlaybackState(); // Save state when user pauses
+
+        stopForeground(false); // Keep notification but allow service to be stopped if idle
+        updateNotification();
+        updateMediaSessionState();
+    }
+
     private void savePlaybackState() {
         if (currentAlbum == null || mediaPlayer == null) return;
 
@@ -344,6 +461,11 @@ public class MusicService extends Service implements
         currentSongIndex = startSongIndex;
         currentAlbumData.postValue(currentAlbum);
 
+        if (!album.songs.isEmpty() && startSongIndex < album.songs.size()) {
+            Song firstSong = album.songs.get(startSongIndex);
+            updateMediaSessionMetadata(firstSong); // Update metadata for the first track
+        }
+
         if (isNewChoice) {
             // If this is a new choice, remove all albums after the current index.
             if (historyIndex > -1 && historyIndex < albumHistory.size() - 1) {
@@ -362,27 +484,53 @@ public class MusicService extends Service implements
         }
         playSong();
     }
-
+    public void stopPlayback() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.reset(); // Reset the player to an idle state
+        }
+        isPlayingData.postValue(false);
+        updateMediaSessionState(); // Update the state to PAUSED
+        mediaSession.setActive(false); // **CRITICAL**: Release the active session
+        stopForeground(true); // Stop the foreground service and remove notification
+        Log.d(TAG, "Playback stopped and session released.");
+    }
 
     private void playSong() {
         if (currentAlbum == null || currentSongIndex < 0 || currentSongIndex >= currentAlbum.songs.size()) {
-            Log.e(TAG, "Cannot play song, invalid state.");
+            Log.e(TAG, "playSong failed: Invalid state.");
             return;
         }
-
-
-        mediaPlayer.reset();
-        isPlayingData.postValue(false); // Reset playing state
         Song songToPlay = currentAlbum.songs.get(currentSongIndex);
-        currentSongData.postValue(songToPlay); // UPDATE
-        Log.d(TAG, "Preparing to play: " + songToPlay.title);
+        Log.d(TAG, "playSong: " + songToPlay.title);
 
+        // --- ADD THIS LINE ---
+        updateMediaSessionMetadata(songToPlay);
+
+        currentSongData.postValue(songToPlay);
         try {
+            mediaPlayer.reset();
             mediaPlayer.setDataSource(getApplicationContext(), songToPlay.contentUri);
-            mediaPlayer.prepareAsync(); // Asynchronous preparation
+            mediaPlayer.prepareAsync(); // onPrepared will be called, which starts playback
         } catch (IOException e) {
             Log.e(TAG, "Error setting data source", e);
         }
+    }
+
+    @Nullable
+    @Override
+    public BrowserRoot onGetRoot(@NonNull String clientPackageName, int clientUid, @Nullable Bundle rootHints) {
+        // Returning a non-null root allows clients to connect to this service.
+        return new BrowserRoot("root", null);
+    }
+
+    @Override
+    public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
+        // For now, we don't need to provide a browsable library, so we send an empty list.
+        // This must be called or the client will hang.
+        result.sendResult(new ArrayList<>());
     }
 
     @Override

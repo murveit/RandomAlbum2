@@ -70,7 +70,7 @@ public class MusicService extends Service implements
     public LiveData<Integer> getPlaybackPositionData() { return playbackPositionData; }
 
 
-    // Actions (No changes here)
+    // Actions
     public static final String ACTION_PLAY_PAUSE = "com.murveit.randomalbum2.action.PLAY_PAUSE";
     public static final String ACTION_NEXT_SONG = "com.murveit.randomalbum2.action.NEXT_SONG";
     public static final String ACTION_PREV_SONG = "com.murveit.randomalbum2.action.PREV_SONG";
@@ -172,8 +172,6 @@ public class MusicService extends Service implements
         return START_STICKY;
     }
 
-    // --- Public methods for the UI to call ---
-
     public void playPause() {
         if (mediaPlayer == null) return;
         if (mediaPlayer.isPlaying()) {
@@ -207,7 +205,7 @@ public class MusicService extends Service implements
     }
     private void updateNotification() {
         // This method takes the notification created by createNotification()
-        // and displays it. It's the standard way to update a foreground service's notification.
+        // and displays it.
         Notification notification = createNotification();
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         manager.notify(NOTIFICATION_ID, notification);
@@ -220,7 +218,6 @@ public class MusicService extends Service implements
         }
         currentSongIndex++;
         if (currentSongIndex >= currentAlbum.songs.size()) {
-            // If we've finished the album, go to the next random one
             Log.d(TAG, "Finished album, playing next album.");
             nextAlbum();
         } else {
@@ -234,18 +231,13 @@ public class MusicService extends Service implements
             return;
         }
 
-        // If more than 3 seconds into the song, or if it's not the first song, just restart/go back.
         if (mediaPlayer != null && mediaPlayer.getCurrentPosition() > 6000 || currentSongIndex > 0) {
             // If we are not on the first track, go back one.
             if (currentSongIndex > 0 && mediaPlayer.getCurrentPosition() <= 6000) {
                 currentSongIndex--;
             }
-            // If we were more than 3 seconds in, this will just restart the current track.
-            // If we were less than 3 seconds in on track > 0, this will play the previous.
             playSong();
         } else {
-            // We are on the first song and within the first 3 seconds.
-            // Go to the last song of the previous album.
             Log.d(TAG, "At start of first song, going to previous album.");
             prevAlbum(true); // Pass true to indicate starting from the end
         }
@@ -264,7 +256,6 @@ public class MusicService extends Service implements
         }
 
         if (albumToPlay != null) {
-            // A direct selection from the picker is a new choice and should clear any "forward" history.
             playAlbum(albumToPlay, 0, true);
         } else {
             Log.e(TAG, "Could not find album with ID: " + albumId);
@@ -303,7 +294,6 @@ public class MusicService extends Service implements
     }
 
     public void prevAlbum() {
-        // Public method defaults to starting from the beginning of the album.
         prevAlbum(false);
     }
 
@@ -329,7 +319,6 @@ public class MusicService extends Service implements
                 while (newPrevious == currentAlbum) {
                     newPrevious = allAlbums.get(random.nextInt(allAlbums.size()));
                 }
-                // Insert this new album at the beginning of the history.
                 albumHistory.add(0, newPrevious);
                 // Our index is now 0 (pointing to the album we just added).
                 historyIndex = 0;
@@ -355,7 +344,6 @@ public class MusicService extends Service implements
         currentSongIndex = startSongIndex;
         currentAlbumData.postValue(currentAlbum);
 
-        // --- History Management Logic ---
         if (isNewChoice) {
             // If this is a new choice, remove all albums after the current index.
             if (historyIndex > -1 && historyIndex < albumHistory.size() - 1) {
@@ -372,8 +360,6 @@ public class MusicService extends Service implements
             // Album is already in history, just move the pointer to it.
             historyIndex = existingIndex;
         }
-        // --- End History Management ---
-
         playSong();
     }
 
@@ -399,8 +385,6 @@ public class MusicService extends Service implements
         }
     }
 
-    // --- MediaPlayer Listeners ---
-
     @Override
     public void onCompletion(MediaPlayer mp) {
         isPlayingData.postValue(false); // UPDATE
@@ -422,7 +406,6 @@ public class MusicService extends Service implements
         updateNotification();
     }
 
-    // --- Notification Management ---
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel serviceChannel = new NotificationChannel(

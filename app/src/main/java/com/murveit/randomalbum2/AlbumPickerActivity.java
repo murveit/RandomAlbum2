@@ -34,7 +34,6 @@ public class AlbumPickerActivity extends AppCompatActivity {
             musicService = binder.getService();
             isBound = true;
             Log.d(TAG, "MusicService connected. Loading albums into picker.");
-            // Once the service is connected, we can get the album list
             populateAlbumList();
         }
 
@@ -60,7 +59,6 @@ public class AlbumPickerActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.rvAlbums);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // Bind to the service to get the list of albums
         Intent intent = new Intent(this, MusicService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
@@ -71,7 +69,6 @@ public class AlbumPickerActivity extends AppCompatActivity {
             return;
         }
 
-        // We need a way to get all albums from the service. Let's add a getter there.
         List<Album> allAlbums = musicService.getAllAlbums();
 
         albumAdapter = new AlbumAdapter(allAlbums, album -> {
@@ -87,7 +84,6 @@ public class AlbumPickerActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        // Handle the back arrow click
         if (item.getItemId() == android.R.id.home) {
             setResult(RESULT_CANCELED);
             finish();

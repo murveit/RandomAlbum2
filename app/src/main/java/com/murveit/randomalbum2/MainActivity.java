@@ -39,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
     // UI Elements
     private ImageView ivAlbumArt;
     private TextView tvAlbumTitle, tvSongTitle, tvPlaybackInfo;
-    // CHANGE: These are now ImageButtons
     private ImageButton btnPlayPause, btnPrevSong, btnNextSong, btnPrevAlbum, btnNextAlbum;
     // KEEP: This button remains
     private Button btnPickAlbum;
@@ -79,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    // --- Permission Handling (No changes) ---
     private final ActivityResultLauncher<String[]> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), permissions -> {
                 boolean allGranted = true;
@@ -159,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkAndRequestPermissions() {
-        // ... same as before
         List<String> permissionsToRequest = new ArrayList<>();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -185,7 +182,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startAndBindService() {
-        // ... same as before
         Intent serviceIntent = new Intent(this, MusicService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent);

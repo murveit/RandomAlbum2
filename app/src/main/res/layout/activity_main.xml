@@ -13,6 +13,9 @@
         android:layout_height="0dp"
         android:background="#333333"
         android:contentDescription="@string/album_cover_art"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -24,6 +27,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:gravity="center"
         android:text="Album Title"
         android:textAppearance="@style/TextAppearance.AppCompat.Large"
         android:textStyle="bold"
@@ -36,6 +40,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:gravity="center"
         android:text="Song Title"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintEnd_toEndOf="parent"
@@ -47,6 +52,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:gravity="center"
         android:text="Track 0/0  |  00:00 / 00:00"
         android:textAppearance="@style/TextAppearance.AppCompat.Small"
         app:layout_constraintEnd_toEndOf="parent"
@@ -56,67 +62,71 @@
     <LinearLayout
         android:id="@+id/song_controls"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="80dp"
         android:layout_marginTop="24dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintTop_toBottomOf="@id/tvPlaybackInfo">
 
-        <Button
-            android:id="@+id/btnPrevSong"
-            style="@style/Widget.AppCompat.Button.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Prev" />
-
-        <Button
-            android:id="@+id/btnPlayPause"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:text="Play" />
-
-        <Button
-            android:id="@+id/btnNextSong"
-            style="@style/Widget.AppCompat.Button.Small"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Next" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/album_controls"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:gravity="center"
-        android:orientation="horizontal"
-        app:layout_constraintTop_toBottomOf="@id/song_controls">
-
-        <Button
+        <ImageButton
             android:id="@+id/btnPrevAlbum"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Prev Album" />
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:contentDescription="Previous Album"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skip_previous"/>
 
-        <Button
+        <ImageButton
+            android:id="@+id/btnPrevSong"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:contentDescription="Previous Song"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_fast_rewind"/>
+
+        <ImageButton
+            android:id="@+id/btnPlayPause"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:contentDescription="Play/Pause"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_play_arrow"/>
+
+        <ImageButton
+            android:id="@+id/btnNextSong"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:contentDescription="Next Song"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_fast_forward"/>
+
+        <ImageButton
             android:id="@+id/btnNextAlbum"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="Next Album" />
-
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:contentDescription="Next Album"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skip_next"/>
     </LinearLayout>
 
-    <Button
+<Button
         android:id="@+id/btnPickAlbum"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Pick Album Manually"
+        android:layout_marginTop="24dp"
+        android:text="Pick Album"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/album_controls" />
+        app:layout_constraintTop_toBottomOf="@+id/song_controls" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

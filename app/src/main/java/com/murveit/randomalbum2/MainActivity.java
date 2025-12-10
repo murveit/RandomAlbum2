@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -37,9 +38,11 @@ public class MainActivity extends AppCompatActivity {
     // UI Elements
     private ImageView ivAlbumArt;
     private TextView tvAlbumTitle, tvSongTitle, tvPlaybackInfo;
-    private Button btnPlayPause, btnPrevSong, btnNextSong, btnPrevAlbum, btnNextAlbum, btnPickAlbum;
+    // CHANGE: These are now ImageButtons
+    private ImageButton btnPlayPause, btnPrevSong, btnNextSong, btnPrevAlbum, btnNextAlbum;
+    // KEEP: This button remains
+    private Button btnPickAlbum;
 
-    // --- NEW: ActivityResultLauncher for the Album Picker ---
     private final ActivityResultLauncher<Intent> albumPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -124,7 +127,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         musicService.getIsPlayingData().observe(this, isPlaying -> {
-            btnPlayPause.setText(isPlaying ? "Pause" : "Play");
+            // CHANGE: Update the icon resource instead of the text
+            if (isPlaying) {
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+            } else {
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            }
         });
 
         musicService.getPlaybackPositionData().observe(this, position -> {
@@ -186,7 +194,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initializeUI() {
-        // ... same as before
         ivAlbumArt = findViewById(R.id.ivAlbumArt);
         tvAlbumTitle = findViewById(R.id.tvAlbumTitle);
         tvSongTitle = findViewById(R.id.tvSongTitle);
@@ -200,15 +207,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        // ... same as before, except for btnPickAlbum
         btnPlayPause.setOnClickListener(v -> { if (isBound) musicService.playPause(); });
         btnNextSong.setOnClickListener(v -> { if (isBound) musicService.nextSong(); });
         btnPrevSong.setOnClickListener(v -> { if (isBound) musicService.prevSong(); });
         btnNextAlbum.setOnClickListener(v -> { if (isBound) musicService.nextAlbum(); });
         btnPrevAlbum.setOnClickListener(v -> { if (isBound) musicService.prevAlbum(); });
 
-        // --- UPDATED: Click listener for Pick Album button ---
         btnPickAlbum.setOnClickListener(v -> {
+            if (isBound) {
+                Intent intent = new Intent(MainActivity.this, AlbumPickerActivity.class);
+                albumPickerLauncher.launch(intent);
+            } else {
+                Toast.makeText(this, "Service not ready yet.", Toast.LENGTH_SHORT).show();
+            }
+        });
+        ivAlbumArt.setOnClickListener(v -> {
             if (isBound) {
                 Intent intent = new Intent(MainActivity.this, AlbumPickerActivity.class);
                 albumPickerLauncher.launch(intent);

@@ -50,10 +50,13 @@ public class AlbumPickerActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_album_picker);
 
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
         // Add a back arrow to the toolbar
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("Select an Album");
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
         recyclerView = findViewById(R.id.rvAlbums);

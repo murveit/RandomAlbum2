@@ -86,6 +86,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     // Actions
     public static final String ACTION_PLAY_PAUSE = "com.murveit.randomalbum2.action.PLAY_PAUSE";
+    public static final String ACTION_PLAY = "com.murveit.randomalbum2.action.PLAY";
     public static final String ACTION_NEXT_SONG = "com.murveit.randomalbum2.action.NEXT_SONG";
     public static final String ACTION_PREV_SONG = "com.murveit.randomalbum2.action.PREV_SONG";
     public static final String ACTION_NEXT_ALBUM = "com.murveit.randomalbum2.action.NEXT_ALBUM";
@@ -270,9 +271,11 @@ public class MusicService extends MediaBrowserServiceCompat implements
                 case ACTION_PREV_SONG:
                     prevSong();
                     break;
+                case ACTION_PLAY:
+                    play();
+                    break;
             }
         }
-        startForeground(NOTIFICATION_ID, createNotification());
         return START_STICKY;
     }
 
@@ -296,7 +299,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
             isPlayingData.postValue(true);
             Log.d(TAG, "Playback started/resumed");
             mediaSession.setActive(true); // **CRITICAL**: Take audio focus
-            startForeground(NOTIFICATION_ID, createNotification()); // Ensure service is foreground
             updateNotification();
             updateMediaSessionState();
         }
@@ -559,7 +561,19 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mp.start();
         isPlayingData.postValue(true);
         Log.d(TAG, "MediaPlayer prepared. Playback started.");
-        updateNotification();
+
+        // 1. Take control of the media session. This tells the system you are the active player.
+        mediaSession.setActive(true);
+
+        // 2. Create the media-styled notification.
+        Notification notification = createNotification();
+
+        // 3. Instead of calling updateNotification(), directly call startForeground() here.
+        //    Because the notification is tied to an active MediaSession, the system allows this.
+        startForeground(NOTIFICATION_ID, notification);
+
+        // 4. Update the MediaSession's state to Playing.
+        updateMediaSessionState();
     }
 
     private void createNotificationChannel() {

@@ -8,6 +8,7 @@ import android.util.Log;
 
 public class PhoneStateReceiver extends BroadcastReceiver {
     private static final String TAG = "PhoneStateReceiver";
+    private static boolean isCallActive = false;
     private static boolean wasPlayingWhenCallStarted = false;
     private final MusicService musicService;
 
@@ -29,20 +30,31 @@ public class PhoneStateReceiver extends BroadcastReceiver {
             return;
         }
 
+        // A call is incoming or active (ringing or off-hook)
         if (state.equals(TelephonyManager.EXTRA_STATE_RINGING) || state.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-            // A call is incoming or has been answered, pause the music.
-            if (musicService.isPlaying()) {
-                wasPlayingWhenCallStarted = true;
-                musicService.playPause(); // This will pause the playback
-            } else {
-                wasPlayingWhenCallStarted = false;
-            }
-        } else if (state.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
-            // The call has ended.
-            if (wasPlayingWhenCallStarted) {
-                musicService.playPause(); // This will resume the playback
-                wasPlayingWhenCallStarted = false;
+            // Only act if a call is not already considered active.
+            // This prevents the OFFHOOK event from overwriting the state set by the RINGING event.
+            if (!isCallActive) {
+                if (musicService.isPlaying()) {
+                    wasPlayingWhenCallStarted = true;
+                    musicService.pause(); // Pause the music
+                } else {
+                    wasPlayingWhenCallStarted = false;
+                }
+                isCallActive = true; // Mark that a call is now active.
             }
         }
+        // The phone is now idle (call ended)
+        else if (state.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
+            // If music was playing when the call started, resume it.
+            if (wasPlayingWhenCallStarted) {
+                Log.d(TAG, "Call ended, resuming playback.");
+                musicService.play(); // It's clearer to call play() directly
+            }
+            // Reset flags now that the call is completely over.
+            isCallActive = false;
+            wasPlayingWhenCallStarted = false;
+        }
     }
+
 }
